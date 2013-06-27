@@ -34,6 +34,31 @@ class CheckersPiece
     @color == :white ? 1 : -1
   end
 
+  def perform_moves(move_sequence)
+    unless @board.valid_move_seq?(move_sequence)
+      raise InvalidMoveError.new, "Illegal move sequence"
+    end
+    perform_moves!(move_sequence)
+  end
+
+  def perform_moves!(move_sequence)
+    if move_sequence[0] != @position
+      raise InvalidMoveError.new, "Illegal start position"
+    end
+    move_sequence[1..-1].each do |move|
+      y1, x1 = @position
+      y2, x2 = move
+
+      if (y2 - y1).abs == 1
+        perform_slide(move)
+      elsif (y2 - y1).abs == 2
+        perform_jump(move)
+      else
+        raise InvalidMoveError.new, "Illegal move in sequence"
+      end
+    end
+  end
+
   def perform_slide(pos)
     unless slide_moves.include?(pos)
       raise InvalidMoveError.new, "Can't slide there"
@@ -49,6 +74,7 @@ class CheckersPiece
     y1, x1 = @position
     y2, x2 = pos
     kill_pos = [ (y1 + y2) / 2, (x1 + x2) / 2]
+
     @board.kill(@board[kill_pos])
     @position = pos
   end
@@ -83,6 +109,9 @@ class CheckersPiece
 end
 
 class CheckersBoard
+
+  attr_accessor :pieces
+
   def initialize
     spawn_pieces
   end
@@ -132,6 +161,29 @@ class CheckersBoard
   def on_board?(position)
     position.all? { |coord| coord.between?(0,7) }
   end
+
+  def dup
+    dup_board = CheckersBoard.new
+    dup_board.pieces = Set.new
+    @pieces.each do |piece|
+      dup_board.pieces << piece
+    end
+
+    dup_board
+  end
+
+  def valid_move_seq?(move_sequence)
+    temp_board = @board.dup
+    begin
+      temp_board[move_sequence[0]].perform_moves!(move_sequence)
+    rescue InvalidMoveError => e
+      puts e.message
+      false
+    else
+      true
+    end
+  end
+
 end
 
 class CheckersGame
