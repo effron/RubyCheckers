@@ -1,3 +1,4 @@
+# encoding: UTF-8
 require 'set'
 
 
@@ -17,7 +18,7 @@ class CheckersPiece
   end
 
   def to_s
-    king? ? SYMBOLS[@color][0], SYMBOLS[@color][1]
+    king? ? SYMBOLS[@color][0] : SYMBOLS[@color][1]
   end
 
 end
@@ -28,7 +29,7 @@ class CheckersBoard
   end
 
   def [](position)
-    @pieces.select { |piece| piece.position }
+    @pieces.find { |piece| piece.position == position }
   end
 
   def spawn_pieces
@@ -52,12 +53,19 @@ class CheckersBoard
   end
 
   def display_board
-    (0..7).map do |row|
+    display = (0..7).map do |row|
       (0..7).map do |column|
-        self[row, column]
+        piece_there = self[[row, column]]
+        piece_there ? piece_there.to_s : " "
       end
     end
+
+    display.each do |row|
+      puts row.join(" | ")
+      puts
+    end
   end
+
 
 end
 
@@ -68,3 +76,6 @@ end
 class CheckersPlayer
 
 end
+
+board = CheckersBoard.new
+board.display_board
