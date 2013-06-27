@@ -142,15 +142,18 @@ class CheckersPiece
   def avail_jump_pos
     y, x = @position
     moves = [[y + direction * 2, x + 2], [y + direction * 2, x - 2]]
+
     if king?
       moves += [[y - direction * 2, x + 2], [y - direction * 2, x - 2]]
     end
+
     moves
   end
 
   def avail_slide_pos
     y, x = @position
     moves = [[y + direction, x + 1], [y + direction, x - 1]]
+
     if king?
      moves += [[y - direction, x + 1], [y - direction, x - 1]]
     end
@@ -163,8 +166,8 @@ class CheckersBoard
 
   attr_accessor :pieces
 
-  def initialize
-    spawn_pieces
+  def initialize(spawn = true)
+    spawn_pieces if spawn = true
   end
 
   def [](position)
@@ -179,20 +182,16 @@ class CheckersBoard
 
   def spawn_pieces
     @pieces = Set.new
-    white_rows = [0, 1, 2]
-    white_columns = [[1, 3, 5, 7], [0, 2, 4, 6], [1, 3, 5, 7]]
-    black_rows = [5, 6, 7]
-    black_columns = [[0, 2, 4, 6], [1 ,3 ,5 , 7],[0 ,2 ,4 , 6]]
 
-    white_rows.each_with_index do |row, i|
-      white_columns[i].each do |column|
-        @pieces << CheckersPiece.new([row, column], :white, self)
-      end
-    end
+    [0, 1, 2, 5, 6, 7].each do |row|
+      (0..7).each do |column|
+        if (column + row) % 2 == 1 && row.between?(0, 2)
+          @pieces << CheckersPiece.new([row, column], :white, self)
+        end
 
-    black_rows.each_with_index do |row, i|
-      black_columns[i].each do |column|
-        @pieces << CheckersPiece.new([row, column], :black, self)
+        if (column + row) % 2 == 1 && row.between?(5, 7)
+          @pieces << CheckersPiece.new([row, column], :black, self)
+        end
       end
     end
   end
@@ -210,6 +209,7 @@ class CheckersBoard
         end
       end
     end
+
     puts ("a".."h").inject("   "){|sum, letter| sum + " #{letter} "}
     display.each_with_index do |row, i|
       puts " #{i+1} #{row.join}"
@@ -227,10 +227,11 @@ class CheckersBoard
   end
 
   def dup
-    dup_board = CheckersBoard.new
+    dup_board = CheckersBoard.new(spawn = false)
     dup_board.pieces = Set.new
     @pieces.each do |piece|
-      dup_board.pieces << CheckersPiece.new(piece.position, piece.color, dup_board, king = piece.king?)
+      dup_board.pieces << CheckersPiece.new(piece.position, piece.color,
+                                            dup_board, king = piece.king?)
     end
 
     dup_board
@@ -247,13 +248,6 @@ class CheckersBoard
       true
     end
   end
-
-  def promote_kings
-    @pieces.each do |piece|
-      piece.promote if piece.position[0] == piece.king_row
-    end
-  end
-
 end
 
 class CheckersGame
@@ -297,7 +291,7 @@ class CheckersPlayer
   end
 
   def make_move
-    puts "Please enter your move a series of board spaces, starting with the piece you want to move"
+    puts "Please enter your move as a series of board spaces."
     moves = gets.chomp
     parse_input(moves)
   end
