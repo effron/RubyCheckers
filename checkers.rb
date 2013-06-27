@@ -42,6 +42,17 @@ class CheckersPiece
     @position = pos
   end
 
+  def perform_jump(pos)
+    unless jump_moves.include?(pos)
+      raise InvalidMoveError.new, "Can't jump there"
+    end
+    y1, x1 = @position
+    y2, x2 = pos
+    kill_pos = [ (y1 + y2) / 2, (x1 + x2) / 2]
+    @board.kill(@board[kill_pos])
+    @position = pos
+  end
+
   def slide_moves
     y, x = @position
     slides = [[y + direction, x + 1], [y + direction, x - 1]]
@@ -78,6 +89,10 @@ class CheckersBoard
 
   def [](position)
     @pieces.find { |piece| piece.position == position }
+  end
+
+  def kill(piece)
+    @pieces.delete(piece)
   end
 
   def spawn_pieces
