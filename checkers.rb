@@ -39,15 +39,14 @@ class CheckersPiece
     unless @board.valid_move_seq?(move_sequence)
       raise InvalidMoveError.new, "Illegal move sequence"
     end
+
     perform_moves!(move_sequence)
   end
 
   def perform_moves!(move_sequence)
     turn_over = false
 
-    if move_sequence[0] != @position
-      raise InvalidMoveError.new, "Illegal start position"
-    end
+    validate_move_sequence(move_sequence)
 
     move_sequence[1..-1].each do |move|
       raise InvalidMoveError.new, "Can't move twice" if turn_over
@@ -63,6 +62,16 @@ class CheckersPiece
         raise InvalidMoveError.new, "Illegal move in sequence"
       end
       promote if @position[0] == king_row
+    end
+  end
+
+  def validate_move_sequence(move_sequence)
+    if move_sequence[0] != @position
+      raise InvalidMoveError.new, "Illegal start position"
+    end
+
+    if move_sequence.length < 2
+      raise InvalidMoveError.new, "Need a start and end location"
     end
   end
 
@@ -241,10 +250,11 @@ class CheckersGame
 
   def play
     until @board.game_over?
-      @board.display_board
       begin
+        @board.display_board
         move_sequence = @players[@turn_color].make_move
         raise InvalidMoveError.new "no piece there" unless @board[move_sequence[0]]
+        raise InvalidMoveError.new "not your piece" if @board[move_sequence[0]].color != @turn_color
         @board[move_sequence[0]].perform_moves(move_sequence)
       rescue InvalidMoveError => e
         puts e.message
@@ -277,6 +287,10 @@ class CheckersPlayer
   end
 
   def parse_input(moves)
+    unless moves =~ /^[a-h][1-8],([a-h][1-8],?)+$/
+      raise InvalidMoveError.new "Invalid Input"
+    end
+
     moves = moves.split(",")
     moves.map { |move| parse_coord(move)}
   end
