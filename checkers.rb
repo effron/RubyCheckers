@@ -1,10 +1,11 @@
 # encoding: UTF-8
 require 'set'
+require 'colorize'
 
 
 class CheckersPiece
 
-  SYMBOLS = { :white => ["w","W"], :black => ["b" , "B"] }
+  SYMBOLS = { :white => ["⛀","⛁"], :black => ["⛂" , "⛃"] }
 
   attr_accessor :position
   attr_reader :color
@@ -42,15 +43,20 @@ class CheckersPiece
   end
 
   def perform_moves!(move_sequence)
+    turn_over = false
+
     if move_sequence[0] != @position
       raise InvalidMoveError.new, "Illegal start position"
     end
+
     move_sequence[1..-1].each do |move|
+      raise InvalidMoveError.new, "Can't move twice" if turn_over
       y1, x1 = @position
       y2, x2 = move
 
       if (y2 - y1).abs == 1
         perform_slide(move)
+        turn_over = true
       elsif (y2 - y1).abs == 2
         perform_jump(move)
       else
@@ -81,7 +87,7 @@ class CheckersPiece
 
   def slide_moves
     y, x = @position
-    slides = [[y + direction, x + 1], [y + direction, x - 1]]
+    slides = avail_slide_pos
     moves = []
     slides.each do |slide|
       moves << slide if @board[slide].nil? && @board.on_board?(slide)
@@ -94,16 +100,36 @@ class CheckersPiece
   def jump_moves
     y, x = @position
     jump_overs = [[y + direction, x + 1], [y + direction, x - 1]]
-    jump_tos = [[y + direction * 2, x + 2], [y + direction * 2, x - 2]]
+    jump_tos = avail_jump_pos
     jump = []
 
     jump_tos.each_with_index do |pos, i|
-      if @board[jump_overs[i]] && @board[jump_overs[i]].color == @color && @board[pos].nil?
+      if @board[jump_overs[i]] && @board[jump_overs[i]].color != @color && @board[pos].nil?
         jump << pos
       end
     end
 
     jump
+  end
+
+  def avail_jump_pos
+    y, x = @position
+    if king?
+      [[y + direction * 2, x + 2], [y + direction * 2, x - 2],
+       [y - direction * 2, x + 2], [y - direction * 2, x - 2]]
+    else
+      [[y + direction * 2, x + 2], [y + direction * 2, x - 2]]
+    end
+  end
+
+  def avail_slide_pos
+    y, x = @position
+    if king?
+      [[y + direction, x + 1], [y + direction, x - 1],
+       [y - direction, x + 1], [y - direction, x - 1]]
+    else
+      [[y + direction, x + 1], [y + direction, x - 1]]
+    end
   end
 
 end
@@ -122,6 +148,12 @@ class CheckersBoard
 
   def kill(piece)
     @pieces.delete(piece)
+  end
+
+  def game_over?
+    [:white, :black].any? do |color|
+      @pieces.select{ |piece| piece.color == color } == []
+    end
   end
 
   def spawn_pieces
@@ -145,17 +177,24 @@ class CheckersBoard
   end
 
   def display_board
+    colors = [:red, :white]
     display = (0..7).map do |row|
       (0..7).map do |column|
+        color = colors[(column + row) % 2]
         piece_there = self[[row, column]]
-        piece_there ? piece_there.to_s : " "
+        if piece_there
+          " #{piece_there.to_s} ".colorize(:background => color)
+        else
+          "   ".colorize(:background => color)
+        end
       end
     end
-
-    display.each do |row|
-      puts row.join(" | ")
-      puts
+    puts ("a".."h").inject("   "){|sum, letter| sum + " #{letter} "}
+    display.each_with_index do |row, i|
+      puts " #{i+1} #{row.join}"
     end
+
+    nil
   end
 
   def on_board?(position)
@@ -166,14 +205,14 @@ class CheckersBoard
     dup_board = CheckersBoard.new
     dup_board.pieces = Set.new
     @pieces.each do |piece|
-      dup_board.pieces << piece
+      dup_board.pieces << CheckersPiece.new(piece.position, piece.color, dup_board)
     end
 
     dup_board
   end
 
   def valid_move_seq?(move_sequence)
-    temp_board = @board.dup
+    temp_board = self.dup
     begin
       temp_board[move_sequence[0]].perform_moves!(move_sequence)
     rescue InvalidMoveError => e
@@ -187,15 +226,56 @@ class CheckersBoard
 end
 
 class CheckersGame
+  def initialize
+    @board = CheckersBoard.new
+    @players = { :white => CheckersPlayer.new(:white),
+                 :black => CheckersPlayer.new(:black) }
+    @turn_color = :white
+  end
+
+  def play
+    until @board.game_over?
+      @board.display_board
+      move_sequence = @players[@turn_color].make_move
+      @board[move_sequence[0]].perform_moves(move_sequence)
+      switch_turn
+    end
+    switch_turn
+
+    puts "#{@turn_color.to_s.capitalize} Player WINS"
+  end
+
+  def switch_turn
+    @turn_color = @turn_color == :white ? :black : :white
+  end
+
 
 end
 
 class CheckersPlayer
+  def initialize(color)
+    @color = color
+  end
 
+  def make_move
+    puts "Please enter your move a series of board spaces, starting with the piece you want to move"
+    moves = gets.chomp
+    parse_input(moves)
+  end
+
+  def parse_input(moves)
+    moves = moves.split(",")
+    moves.map { |move| parse_coord(move)}
+  end
+
+  def parse_coord(move)
+    chars = move.split(//)
+    [chars[1].to_i - 1, chars[0].ord - 97]
+  end
 end
 
 class InvalidMoveError < StandardError
 end
 
-board = CheckersBoard.new
-board.display_board
+game = CheckersGame.new
+game.play
