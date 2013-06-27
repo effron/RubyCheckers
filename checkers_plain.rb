@@ -338,7 +338,7 @@ end
 class InvalidMoveError < StandardError
 end
 
-if __FILE__ == $PRORGAM_NAME
+if __FILE__ == $PROGRAM_NAME
   game = CheckersGame.new
   game.play
 end
