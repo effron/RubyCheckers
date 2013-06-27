@@ -22,22 +22,6 @@ class CheckersPiece
     king? ? SYMBOLS[@color][1] : SYMBOLS[@color][0]
   end
 
-  def promote
-    @king = true
-  end
-
-  def should_promote?
-    @position[0] == king_row
-  end
-
-  def king_row
-    @color == :white ? 7 : 0
-  end
-
-  def direction
-    @color == :white ? 1 : -1
-  end
-
   def perform_moves(move_sequence)
     unless @board.valid_move_seq?(move_sequence)
       raise InvalidMoveError.new, "Illegal move sequence"
@@ -63,6 +47,24 @@ class CheckersPiece
 
       promote if should_promote?
     end
+  end
+
+  private
+
+  def promote
+    @king = true
+  end
+
+  def should_promote?
+    @position[0] == king_row
+  end
+
+  def king_row
+    @color == :white ? 7 : 0
+  end
+
+  def direction
+    @color == :white ? 1 : -1
   end
 
   def perform_move(move)
@@ -167,7 +169,7 @@ class CheckersBoard
   attr_accessor :pieces
 
   def initialize(spawn = true)
-    spawn_pieces if spawn = true
+    spawn_pieces if spawn
   end
 
   def [](position)
@@ -180,35 +182,8 @@ class CheckersBoard
     end
   end
 
-  def spawn_pieces
-    @pieces = Set.new
-
-    [0, 1, 2, 5, 6, 7].each do |row|
-      (0..7).each do |column|
-        if (column + row) % 2 == 1 && row.between?(0, 2)
-          @pieces << CheckersPiece.new([row, column], :white, self)
-        end
-
-        if (column + row) % 2 == 1 && row.between?(5, 7)
-          @pieces << CheckersPiece.new([row, column], :black, self)
-        end
-      end
-    end
-  end
-
   def display_board
-    colors = [:red, :white]
-    display = (0..7).map do |row|
-      (0..7).map do |column|
-        color = colors[(column + row) % 2]
-        piece_there = self[[row, column]]
-        if piece_there
-          " #{piece_there.to_s} ".colorize(:background => color)
-        else
-          "   ".colorize(:background => color)
-        end
-      end
-    end
+    display = build_colorized_board_array
 
     puts ("a".."h").inject("   "){|sum, letter| sum + " #{letter} "}
     display.each_with_index do |row, i|
@@ -248,6 +223,39 @@ class CheckersBoard
       true
     end
   end
+
+  private
+
+  def build_colorized_board_array
+    colors = [:red, :white]
+    (0..7).map do |row|
+      (0..7).map do |column|
+        color = colors[(column + row) % 2]
+        piece_there = self[[row, column]]
+        if piece_there
+          " #{piece_there.to_s} ".colorize(:background => color)
+        else
+          "   ".colorize(:background => color)
+        end
+      end
+    end
+  end
+
+  def spawn_pieces
+    @pieces = Set.new
+
+    [0, 1, 2, 5, 6, 7].each do |row|
+      (0..7).each do |column|
+        if (column + row) % 2 == 1 && row.between?(0, 2)
+          @pieces << CheckersPiece.new([row, column], :white, self)
+        end
+
+        if (column + row) % 2 == 1 && row.between?(5, 7)
+          @pieces << CheckersPiece.new([row, column], :black, self)
+        end
+      end
+    end
+  end
 end
 
 class CheckersGame
@@ -260,29 +268,43 @@ class CheckersGame
 
   def play
     until @board.game_over?
-      begin
-        @board.display_board
-        move_sequence = @players[@turn_color].make_move
-        raise InvalidMoveError.new "no piece there" unless @board[move_sequence[0]]
-        raise InvalidMoveError.new "not your piece" if @board[move_sequence[0]].color != @turn_color
-        @board[move_sequence[0]].perform_moves(move_sequence)
-      rescue InvalidMoveError => e
-        puts e.message
-        retry
-      end
-
-      switch_turn
+      play_turn
     end
-    switch_turn
-    @board.display_board
-    puts "#{@turn_color.to_s.capitalize} Player WINS"
+
+    switch_turn #switches turns again because it switches after the move
+    @board.display_board #one last time to see the board
+    puts "#{@turn_color.to_s.capitalize} Player Wins!"
+  end
+
+  private
+
+  def play_turn
+    begin
+      @board.display_board
+      puts "#{@turn_color.to_s.capitalize}'s Turn"
+      move_sequence = @players[@turn_color].make_move
+      validate_move_sequence(move_sequence)
+      @board[move_sequence[0]].perform_moves(move_sequence)
+      switch_turn
+    rescue InvalidMoveError => e
+      puts e.message
+      retry
+    end
+  end
+
+  def validate_move_sequence(move_sequence)
+    unless @board[move_sequence[0]]
+      raise InvalidMoveError.new "no piece there"
+    end
+
+    if @board[move_sequence[0]].color != @turn_color
+      raise InvalidMoveError.new "not your piece"
+    end
   end
 
   def switch_turn
     @turn_color = @turn_color == :white ? :black : :white
   end
-
-
 end
 
 class CheckersPlayer
@@ -295,6 +317,8 @@ class CheckersPlayer
     moves = gets.chomp
     parse_input(moves)
   end
+
+  private
 
   def parse_input(moves)
     unless moves =~ /^[a-h][1-8],([a-h][1-8],?)+$/
