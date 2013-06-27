@@ -4,7 +4,6 @@ require 'colorize'
 
 
 class CheckersPiece
-
   SYMBOLS = { :white => ["⛀","⛁"], :black => ["⛂" , "⛃"] }
 
   attr_accessor :position
@@ -27,6 +26,10 @@ class CheckersPiece
     @king = true
   end
 
+  def should_promote?
+    @position[0] == king_row
+  end
+
   def king_row
     @color == :white ? 7 : 0
   end
@@ -44,27 +47,44 @@ class CheckersPiece
   end
 
   def perform_moves!(move_sequence)
-    turn_over = false
-    just_jumped = false
     validate_move_sequence(move_sequence)
+    turn_over, just_jumped = false, false
 
     move_sequence[1..-1].each do |move|
       raise InvalidMoveError.new, "Can't move twice" if turn_over
-      y1, x1 = @position
-      y2, x2 = move
-
-      if (y2 - y1).abs == 1
-        raise InvalidMoveError.new, "Can't jump then slide" if just_jumped
-        perform_slide(move)
-        turn_over = true
-      elsif (y2 - y1).abs == 2
-        perform_jump(move)
-        just_jumped = true
-      else
-        raise InvalidMoveError.new, "Illegal move in sequence"
+      if just_jumped && slide?(move)
+        raise InvalidMoveError.new, "Can't jump then slide"
       end
-      promote if @position[0] == king_row
+
+      perform_move(move)
+
+      turn_over = true if slide?(move)
+      just_jumped = true if jump?(move)
+
+      promote if should_promote?
     end
+  end
+
+  def perform_move(move)
+    if slide?(move)
+      perform_slide(move)
+    elsif jump?(move)
+      perform_jump(move)
+    else
+      raise InvalidMoveError.new, "That move is neither a slide nor a jump"
+    end
+  end
+
+  def slide?(move)
+    y1, x1 = @position
+    y2, x2 = move
+    (y2 - y1).abs == 1 && (x2 - x1).abs == 1
+  end
+
+  def jump?(move)
+    y1, x1 = @position
+    y2, x2 = move
+    (y2 - y1).abs == 2 && (x2 - x1).abs == 2
   end
 
   def validate_move_sequence(move_sequence)
