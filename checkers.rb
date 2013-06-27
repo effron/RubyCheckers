@@ -7,6 +7,7 @@ class CheckersPiece
   SYMBOLS = { :white => ["w","W"], :black => ["b" , "B"] }
 
   attr_accessor :position
+  attr_reader :color
 
   def initialize(position, color, board)
     @position, @color, @board = position, color, board
@@ -18,7 +19,54 @@ class CheckersPiece
   end
 
   def to_s
-    king? ? SYMBOLS[@color][0] : SYMBOLS[@color][1]
+    king? ? SYMBOLS[@color][1] : SYMBOLS[@color][0]
+  end
+
+  def promote
+    @king = true
+  end
+
+  def king_row
+    @color == :white ? 7 : 0
+  end
+
+  def direction
+    @color == :white ? 1 : -1
+  end
+
+  def perform_slide(pos)
+    unless slide_moves.include?(pos)
+      raise InvalidMoveError.new, "Can't slide there"
+    end
+
+    @position = pos
+  end
+
+  def slide_moves
+    y, x = @position
+    slides = [[y + direction, x + 1], [y + direction, x - 1]]
+    moves = []
+    slides.each do |slide|
+      moves << slide if @board[slide].nil? && @board.on_board?(slide)
+      p @board[slide]
+    end
+
+    moves
+  end
+
+  def jump_moves
+    y, x = @position
+    jump_overs = [[y + direction, x + 1], [y + direction, x - 1]]
+    jump_tos = [[y + direction * 2, x + 2], [y + direction * 2, x - 2]]
+    jump = []
+
+    jump_tos.each_with_index do |pos, i|
+      if @board[jump_overs[i]] && @board[jump_overs[i]].color == @color && @board[pos].nil?
+        jump << pos
+      end
+    end
+
+    jump
   end
 
 end
@@ -66,7 +114,9 @@ class CheckersBoard
     end
   end
 
-
+  def on_board?(position)
+    position.all? { |coord| coord.between?(0,7) }
+  end
 end
 
 class CheckersGame
@@ -75,6 +125,9 @@ end
 
 class CheckersPlayer
 
+end
+
+class InvalidMoveError < StandardError
 end
 
 board = CheckersBoard.new
