@@ -120,49 +120,43 @@ class CheckersPiece
   def slide_moves
     y, x = @position
     slides = avail_slide_pos
-    moves = []
 
-    slides.each do |slide|
-      moves << slide if @board[slide].nil? && @board.on_board?(slide)
+    slides.select do |slide|
+      @board[slide].nil? && @board.on_board?(slide)
     end
-
-    moves
   end
 
   def jump_moves
-    y, x = @position
-    jump_overs = avail_slide_pos
-    jump_tos = avail_jump_pos
-    jump = []
-
-    jump_tos.each_with_index do |pos, i|
-      if @board[jump_overs[i]] && @board[jump_overs[i]].color != @color && @board[pos].nil?
-        jump << pos
-      end
+    avail_jump_pos.select do |pos|
+      mid = @board[calc_mid_point(pos)]
+      mid && mid.color != @color && @board[pos].nil?
     end
-    jump
+  end
+
+  def calc_mid_point(jump_move)
+    y1, x1 = @position
+    y2, x2 = jump_move
+    [(y1 + y2) / 2, (x1 + x2) / 2]
   end
 
   def avail_jump_pos
     y, x = @position
+    moves = [[y + direction * 2, x + 2], [y + direction * 2, x - 2]]
     if king?
-      [[y + direction * 2, x + 2], [y + direction * 2, x - 2],
-       [y - direction * 2, x + 2], [y - direction * 2, x - 2]]
-    else
-      [[y + direction * 2, x + 2], [y + direction * 2, x - 2]]
+      moves += [[y - direction * 2, x + 2], [y - direction * 2, x - 2]]
     end
+    moves
   end
 
   def avail_slide_pos
     y, x = @position
+    moves = [[y + direction, x + 1], [y + direction, x - 1]]
     if king?
-      [[y + direction, x + 1], [y + direction, x - 1],
-       [y - direction, x + 1], [y - direction, x - 1]]
-    else
-      [[y + direction, x + 1], [y + direction, x - 1]]
+     moves += [[y - direction, x + 1], [y - direction, x - 1]]
     end
-  end
 
+    moves
+  end
 end
 
 class CheckersBoard
