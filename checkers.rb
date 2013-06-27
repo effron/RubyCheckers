@@ -8,11 +8,11 @@ class CheckersPiece
   SYMBOLS = { :white => ["⛀","⛁"], :black => ["⛂" , "⛃"] }
 
   attr_accessor :position
-  attr_reader :color
+  attr_reader :color, :board
 
-  def initialize(position, color, board)
+  def initialize(position, color, board, king = false)
     @position, @color, @board = position, color, board
-    @king = false
+    @king = king
   end
 
   def king?
@@ -62,6 +62,7 @@ class CheckersPiece
       else
         raise InvalidMoveError.new, "Illegal move in sequence"
       end
+      promote if @position[0] == king_row
     end
   end
 
@@ -89,9 +90,9 @@ class CheckersPiece
     y, x = @position
     slides = avail_slide_pos
     moves = []
+
     slides.each do |slide|
       moves << slide if @board[slide].nil? && @board.on_board?(slide)
-      p @board[slide]
     end
 
     moves
@@ -99,7 +100,7 @@ class CheckersPiece
 
   def jump_moves
     y, x = @position
-    jump_overs = [[y + direction, x + 1], [y + direction, x - 1]]
+    jump_overs = avail_slide_pos
     jump_tos = avail_jump_pos
     jump = []
 
@@ -108,7 +109,6 @@ class CheckersPiece
         jump << pos
       end
     end
-
     jump
   end
 
@@ -144,10 +144,6 @@ class CheckersBoard
 
   def [](position)
     @pieces.find { |piece| piece.position == position }
-  end
-
-  def kill(piece)
-    @pieces.delete(piece)
   end
 
   def game_over?
@@ -197,6 +193,10 @@ class CheckersBoard
     nil
   end
 
+  def kill(piece)
+    @pieces.delete(piece)
+  end
+
   def on_board?(position)
     position.all? { |coord| coord.between?(0,7) }
   end
@@ -205,7 +205,7 @@ class CheckersBoard
     dup_board = CheckersBoard.new
     dup_board.pieces = Set.new
     @pieces.each do |piece|
-      dup_board.pieces << CheckersPiece.new(piece.position, piece.color, dup_board)
+      dup_board.pieces << CheckersPiece.new(piece.position, piece.color, dup_board, king = piece.king?)
     end
 
     dup_board
@@ -223,6 +223,12 @@ class CheckersBoard
     end
   end
 
+  def promote_kings
+    @pieces.each do |piece|
+      piece.promote if piece.position[0] == piece.king_row
+    end
+  end
+
 end
 
 class CheckersGame
@@ -236,12 +242,19 @@ class CheckersGame
   def play
     until @board.game_over?
       @board.display_board
-      move_sequence = @players[@turn_color].make_move
-      @board[move_sequence[0]].perform_moves(move_sequence)
+      begin
+        move_sequence = @players[@turn_color].make_move
+        raise InvalidMoveError.new "no piece there" unless @board[move_sequence[0]]
+        @board[move_sequence[0]].perform_moves(move_sequence)
+      rescue InvalidMoveError => e
+        puts e.message
+        retry
+      end
+
       switch_turn
     end
     switch_turn
-
+    @board.display_board
     puts "#{@turn_color.to_s.capitalize} Player WINS"
   end
 
