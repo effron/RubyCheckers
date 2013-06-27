@@ -45,7 +45,7 @@ class CheckersPiece
 
   def perform_moves!(move_sequence)
     turn_over = false
-
+    just_jumped = false
     validate_move_sequence(move_sequence)
 
     move_sequence[1..-1].each do |move|
@@ -54,10 +54,12 @@ class CheckersPiece
       y2, x2 = move
 
       if (y2 - y1).abs == 1
+        raise InvalidMoveError.new, "Can't jump then slide" if just_jumped
         perform_slide(move)
         turn_over = true
       elsif (y2 - y1).abs == 2
         perform_jump(move)
+        just_jumped = true
       else
         raise InvalidMoveError.new, "Illegal move in sequence"
       end
