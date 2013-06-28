@@ -82,13 +82,13 @@ class CheckersPiece
     y2, x2 = move
     (y2 - y1).abs == 1 && (x2 - x1).abs == 1
   end
-
+  #REV: Why no check if move position is empty?
   def jump?(move)
     y1, x1 = @position
     y2, x2 = move
     (y2 - y1).abs == 2 && (x2 - x1).abs == 2
   end
-
+  #REV: Nice error messages
   def validate_move_sequence(move_sequence)
     if move_sequence[0] != @position
       raise InvalidMoveError.new, "Illegal start position"
@@ -152,6 +152,7 @@ class CheckersPiece
     moves
   end
 
+  #REV: nice method of adding king moves
   def avail_slide_pos
     y, x = @position
     moves = [[y + direction, x + 1], [y + direction, x - 1]]
@@ -181,7 +182,7 @@ class CheckersBoard
       @pieces.select{ |piece| piece.color == color } == []
     end
   end
-
+  #REV: Nice use of string interpolation
   def display_board
     display = build_colorized_board_array
 
@@ -301,7 +302,7 @@ class CheckersGame
       raise InvalidMoveError.new "not your piece"
     end
   end
-
+  #REV: Good use of ternaries
   def switch_turn
     @turn_color = @turn_color == :white ? :black : :white
   end
@@ -319,7 +320,7 @@ class CheckersPlayer
   end
 
   private
-
+  #REV: Good regex
   def parse_input(moves)
     unless moves =~ /^[a-h][1-8],([a-h][1-8],?)+$/
       raise InvalidMoveError.new "Invalid Input"
