@@ -1,8 +1,6 @@
 RubyCheckers
 ============
 
-Week 2, Day 4 of AppAcademy
-
 Make sure to intsall the colorize gem in order to use this version of checkers.
 http://colorize.rubyforge.org/files/README_txt.html
 
